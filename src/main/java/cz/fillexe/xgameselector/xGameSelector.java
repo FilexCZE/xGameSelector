@@ -1,20 +1,27 @@
 package cz.fillexe.xgameselector;
 
-import org.bukkit.Bukkit;
+import cz.fillexe.xgameselector.function.Commands;
 import cz.fillexe.xgameselector.function.Crafting;
 import cz.fillexe.xgameselector.function.Selector;
-import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 import java.util.List;
 
-public final class xGameSelector extends JavaPlugin {
+public final class xGameSelector extends JavaPlugin implements CommandExecutor {
+    private static xGameSelector instance;
     private FileConfiguration config;
     private Selector selector;
-    private static xGameSelector instance;
 
-    @Override
     public void onEnable() {
+        instance = this;
         saveDefaultConfig();
         config = getConfig();
         List<String> blockedRecipes = config.getStringList("BlockedRecipes");
@@ -26,9 +33,10 @@ public final class xGameSelector extends JavaPlugin {
 
         selector = new Selector();
         Bukkit.getServer().getPluginManager().registerEvents(selector, this);
-        selector.loadSigns();
-        instance = this;
+        // Zavolejte metodu init() místo loadSigns()
+        selector.init();
 
+        getCommand("xgameselector").setExecutor(new Commands());
         Bukkit.getServer().getLogger().info("Plugin byl zapnut");
     }
 

@@ -4,8 +4,9 @@ main: cz.fillexe.xgameselector.xGameSelector
 api-version: 1.19
 commands:
   xgameselector:
-    description: xGameSelector plugin command
-    usage: '/xgameselector create <sign_name>'
-    permission: 'xgameselector.command'
-    permission-message: 'You do not have permission to use this command'
-    executor: cz.fillexe.xgameselector.function.Commands
+    description: Manage game signs
+    aliases: [xgs]
+permissions:
+  xgameselector.use:
+    description: Permission to use the xgameselector command.
+    default: op

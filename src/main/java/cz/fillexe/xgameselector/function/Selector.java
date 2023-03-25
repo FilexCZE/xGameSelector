@@ -12,11 +12,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
-import org.bukkit.Material;
-
-import org.bukkit.configuration.file.FileConfiguration;
-import java.util.List;
-import java.util.Arrays;
+import org.bukkit.util.Vector;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,6 +20,10 @@ import java.util.Map;
 public class Selector implements Listener {
 
     private final Map<String, String> signTexts = new HashMap<>();
+
+    public void init() {
+        loadSigns();
+    }
 
     public void loadSigns() {
         ConfigurationSection signs = xGameSelector.getInstance().getConfig().getConfigurationSection("Signs");
@@ -33,48 +33,16 @@ public class Selector implements Listener {
         }
     }
 
-    public Selector() {
-        FileConfiguration config = xGameSelector.getInstance().getConfig();
-        if (!config.contains("BlockedRecipes")) {
-            List<String> defaultBlockedRecipes = Arrays.asList("CRIMSON_SIGN");
-            config.set("BlockedRecipes", defaultBlockedRecipes);
-        }
-        if (!config.contains("Signs")) {
-            config.createSection("Signs");
-        }
-        ConfigurationSection signs = config.getConfigurationSection("Signs");
-        for (String signName : signs.getKeys(false)) {
-            ConfigurationSection sign = signs.getConfigurationSection(signName);
-            if (!sign.contains("additional_text")) {
-                sign.set("additional_text", "");
-            }
-            if (!sign.contains("permanent_text")) {
-                sign.set("permanent_text", "");
-            }
-            if (!sign.contains("additional_position")) {
-                ConfigurationSection position = sign.createSection("additional_position");
-                for (int i = 1; i <= 2; i++) {
-                    ConfigurationSection p = position.createSection(String.valueOf(i));
-                    p.set("x", 0);
-                    p.set("y", 0);
-                    p.set("z", 0);
-                    p.set("world", "world");
-                }
-            }
-            if (!sign.contains("sign.position")) {
-                ConfigurationSection position = sign.createSection("sign.position");
-                position.set("x", 0);
-                position.set("y", 0);
-                position.set("z", 0);
-                position.set("world", "world");
-            }
-        }
-        xGameSelector.getInstance().saveConfig();
-    }
-
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
+        Location from = event.getFrom();
+        Location to = event.getTo();
+
+        if (from.getX() == to.getX() && from.getY() == to.getY() && from.getZ() == to.getZ()) {
+            return;
+        }
+
         Location eyeLocation = player.getEyeLocation();
         Block block = eyeLocation.getBlock().getRelative(0, -1, 0);
         if (block.getType() == Material.CRIMSON_SIGN || block.getType() == Material.CRIMSON_WALL_HANGING_SIGN || block.getType() == Material.CRIMSON_WALL_SIGN) {
@@ -89,34 +57,70 @@ public class Selector implements Listener {
                 World world = Bukkit.getWorld(worldName);
                 Location signLocation = new Location(world, x, y, z);
                 if (signLocation.equals(block.getLocation())) {
+                    ConfigurationSection permanentText = sign.getConfigurationSection("permanent_text");
+                    String signText = "";
+                    if (permanentText != null) {
+                        signText += permanentText.getString("line1") + "\n";
+                        signText += permanentText.getString("line2") + "\n";
+                        signText += permanentText.getString("line3") + "\n";
+                        signText += permanentText.getString("line4") + "\n";
+                    }
                     ConfigurationSection additionalPositions = sign.getConfigurationSection("additional_position");
-                    if (additionalPositions != null) {
+
+                    if (additionalPositions != null && !additionalPositions.getKeys(false).isEmpty()) {
                         boolean shouldShowAdditional = false;
-                        for (String posName : additionalPositions.getKeys(false)) {
-                            ConfigurationSection additionalPosition = additionalPositions.getConfigurationSection(posName);
-                            int ax = additionalPosition.getInt("x");
-                            int ay = additionalPosition.getInt("y");
-                            int az = additionalPosition.getInt("z");
-                            String aWorldName = additionalPosition.getString("world");
-                            World aWorld = Bukkit.getWorld(aWorldName);
-                            Location additionalLocation = new Location(aWorld, ax, ay, az);
-                            if (eyeLocation.getX() >= additionalLocation.getX() && eyeLocation.getX() <= additionalLocation.getX() + 1
-                                    && eyeLocation.getY() >= additionalLocation.getY() && eyeLocation.getY() <= additionalLocation.getY() + 1
-                                    && eyeLocation.getZ() >= additionalLocation.getZ() && eyeLocation.getZ() <= additionalLocation.getZ() + 1) {
+
+                        Location pos1 = new Location(
+                                Bukkit.getWorld(additionalPositions.getString("pos1.world")),
+                                additionalPositions.getInt("pos1.x"),
+                                additionalPositions.getInt("pos1.y"),
+                                additionalPositions.getInt("pos1.z")
+                        );
+                        Location pos2 = new Location(
+                                Bukkit.getWorld(additionalPositions.getString("pos2.world")),
+                                additionalPositions.getInt("pos2.x"),
+                                additionalPositions.getInt("pos2.y"),
+                                additionalPositions.getInt("pos2.z")
+                        );
+
+                        double minX = Math.min(pos1.getX(), pos2.getX());
+                        double minY = Math.min(pos1.getY(), pos2.getY());
+                        double minZ = Math.min(pos1.getZ(), pos2.getZ());
+                        double maxX = Math.max(pos1.getX(), pos2.getX());
+                        double maxY = Math.max(pos1.getY(), pos2.getY());
+                        double maxZ = Math.max(pos1.getZ(), pos2.getZ());
+
+                        Vector direction = eyeLocation.getDirection().normalize();
+                        Location checkLocation = eyeLocation.clone();
+
+                        for (int i = 0; i < 100; i++) {
+                            checkLocation.add(direction);
+                            double checkX = checkLocation.getX();
+                            double checkY = checkLocation.getY();
+                            double checkZ = checkLocation.getZ();
+
+                            if (checkX >= minX && checkX <= maxX && checkY >= minY && checkY <= maxY && checkZ >= minZ && checkZ <= maxZ) {
                                 shouldShowAdditional = true;
                                 break;
                             }
                         }
+
                         if (shouldShowAdditional) {
-                            signTexts.put(signName, sign.getString("additional_text"));
-                        } else {
-                            signTexts.put(signName, sign.getString("permanent_text"));
+                            ConfigurationSection additionalText = sign.getConfigurationSection("additional_text");
+                            if (additionalText != null) {
+                                signText += additionalText.getString("line1") + "\n";
+                                signText += additionalText.getString("line2") + "\n";
+                                signText += additionalText.getString("line3") + "\n";
+                                signText += additionalText.getString("line4") + "\n";
+                            }
                         }
-                    } else {
-                        signTexts.put(signName, sign.getString("permanent_text"));
+                        // update sign text
+                        signBlock.setLine(0, signText.split("\n").length > 0 && signText.split("\n")[0] != null ? signText.split("\n")[0] : "");
+                        signBlock.setLine(1, signText.split("\n").length > 1 && signText.split("\n")[1] != null ? signText.split("\n")[1] : "");
+                        signBlock.setLine(2, signText.split("\n").length > 2 && signText.split("\n")[2] != null ? signText.split("\n")[2] : "");
+                        signBlock.setLine(3, signText.split("\n").length > 3 && signText.split("\n")[3] != null ? signText.split("\n")[3] : "");
+                        signBlock.update();
                     }
-                    signBlock.setLine(0, signTexts.get(signName));
-                    signBlock.update();
                 }
             }
         }
