@@ -1,0 +1,24 @@
+BlockedRecipes:
+  - CRIMSON_SIGN
+
+Signs:
+  Sign_1:
+    additional_text: 'text'
+    permanent_text: 'text'
+    additional_position:
+        1:
+          x: 0
+          y: 0
+          z: 0
+          world: world
+        2:
+          x: 0
+          y: 0
+          z: 0
+          world: world
+    sign:
+      position:
+        x: 0
+        y: 0
+        z: 0
+        world: world
