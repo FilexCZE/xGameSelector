@@ -1,9 +1,12 @@
 package cz.fillexe.xgameselector.function;
 
+import com.google.common.collect.Sets;
 import cz.fillexe.xgameselector.xGameSelector;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.block.Sign;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
@@ -11,7 +14,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.util.Vector;
-import org.bukkit.block.Block;
+import org.checkerframework.framework.qual.TargetLocations;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -47,9 +50,6 @@ public class Selector implements Listener {
     }
 
     private boolean isPlayerLookingAt(Player player, ConfigurationSection sign) {
-        Location eyeLocation = player.getEyeLocation();
-        Vector direction = eyeLocation.getDirection().normalize();
-        Location checkLocation = eyeLocation.clone();
 
         ConfigurationSection additionalPositions = sign.getConfigurationSection("additional_position");
 
@@ -67,23 +67,10 @@ public class Selector implements Listener {
                     additionalPositions.getInt("pos2.z")
             );
 
-            double minX = Math.min(pos1.getX(), pos2.getX());
-            double minY = Math.min(pos1.getY(), pos2.getY());
-            double minZ = Math.min(pos1.getZ(), pos2.getZ());
-            double maxX = Math.max(pos1.getX(), pos2.getX());
-            double maxY = Math.max(pos1.getY(), pos2.getY());
-            double maxZ = Math.max(pos1.getZ(), pos2.getZ());
-
-            for (int i = 0; i < 100; i++) {
-                checkLocation.add(direction);
-                double checkX = checkLocation.getX();
-                double checkY = checkLocation.getY();
-                double checkZ = checkLocation.getZ();
-
-                if (checkX >= minX && checkX <= maxX && checkY >= minY && checkY <= maxY && checkZ >= minZ && checkZ <= maxZ) {
-                    return true;
-                }
-            }
+            Block targetBlock = player.getTargetBlock(Sets.newHashSet(Material.AIR), 15);
+            Location targetLocation = targetBlock.getLocation();
+            targetLocation = targetLocation.add(0.5, 0.5, 0.5);
+            return IsInCuboin3D(targetLocation,pos1,pos2);
         }
 
         return false;
@@ -129,20 +116,26 @@ public class Selector implements Listener {
         }
     }
 
+    private static boolean IsInCuboin3D(Location loca, Location pos1, Location pos2) {
+        double x = loca.getX();
+        double y = loca.getY();
+        double z = loca.getZ();
+
+        double xMin = Math.min(pos1.getX(), pos2.getX());
+        double xMax = Math.max(pos1.getX(), pos2.getX()) + 0.99;
+        double yMin = Math.min(pos1.getY(), pos2.getY());
+        double yMax = Math.max(pos1.getY(), pos2.getY()) + 0.99;
+        double zMin = Math.min(pos1.getZ(), pos2.getZ());
+        double zMax = Math.max(pos1.getZ(), pos2.getZ()) + 0.99;
+
+        return x>=xMin && x<=xMax && y>=yMin && y<=yMax && z>=zMin && z<=zMax;
+    }
+
+
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
         Player player = event.getPlayer();
-        Location from = event.getFrom();
-        Location to = event.getTo();
 
-        if (from == null || to == null) {
-            return;
-        }
-
-        if (from.getX() != to.getX() || from.getY() != to.getY() || from.getZ() != to.getZ() ||
-                from.getYaw() != to.getYaw() || from.getPitch() != to.getPitch()) {
-
-            updateSignTextForPlayer(player);
-        }
+        updateSignTextForPlayer(player);
     }
 }
